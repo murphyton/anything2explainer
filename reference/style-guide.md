@@ -17,6 +17,30 @@
 | z 序 | 黑底 < 幕底（Fog + 星点，或 DotFieldBg）< 实拍 < 覆盖层 < 镜头 < 片尾压黑 < 进度条 < aboveBar 镜头 < 字幕 | |
 
 ## 2. 调色板（`src/ui.tsx` 常量）
+
+> **主题系统**（2026-11 新增）：调色板不再硬编码——`src/themes/tokens.json` 是唯一来源，`config.ts` 的 `theme` 字段选择激活主题，`ui.tsx` 的 PURPLE/ORANGE 等常量从主题 token 读出（**purple-dots 与历史值逐字节一致**，默认行为零变化）。QC 工具（frame_metrics.py 判色 / 抠幕底）读同一份 tokens.json，渲前渲后同源。
+
+### 主题清单（每主题 = 调色板 + 配套幕底 + 字体 + 片头入场签名）
+
+| 主题 | 领域 | 底色 | 主重点色 accent | 配套幕底（config.bg='auto' 时自动选） | 标题字体 | 片头入场 |
+|---|---|---|---|---|---|---|
+| `purple-dots` | 默认 | `#0b0c11` 点阵波 | 紫 `#6630F8` | dots 点阵波 | Audiowide + Noto Sans 900 | glitch |
+| `nobel` | 诺奖 / 科学家 | 深蓝夜空 `#0c1526` | 奖章金 `#E8B84B` | nobel 金尘椭圆轨道 + 中央金晕 | 思源宋体 Heavy | ink（墨点显影：淡入+1.5%收拢） |
+| `book` | 拆书 / 读书 | 暖棕黑 `#1a1410` | 琥珀 `#E09A3E` | book 纸纤维纹理 + 琥珀光斑漂移 | 思源宋体 Bold | page（翻页：rotateX 62°→0 自底部） |
+| `ai` | AI / 前沿科技 | 冷黑蓝 `#0a0e14` | 电青 `#00D4C8` | ai 粒子流（生命周期淡入淡出）+ CRT 扫描线 + 偶发 glitch 抖动 | Exo 2 ExtraBold | glitch（降频） |
+| `stem` | 数理化教学 | 墨绿黑板 `#12241c` | 粉笔黄 `#F5D76E` | stem 上浮粉笔尘 + 细坐标网格 | 霞鹜文楷 Medium | chalk（clip-path 从左向右板书） |
+
+**规则（所有主题共享，不得违反）**：颜色即语义——主色=当前重点、灰=未激活/背景、橙红=指标/警示/对方、白=结构文字、绿=正确；一帧里主色重点不超过一处大面积；主角必带光（glowPurple 家族按 accentRgb 组装）。
+
+**幕底退让**：新幕底（nobel/book/ai/stem）支持 `BG_Gn` 的 `intensity: 0–1`（BgSpec 可选字段）——1 不退让，0.4 ≈ 压暗至 40%+减速至 65%（信息密集段用）。`stars:'none'` 对全部幕底生效（整层关）。
+
+**公式**：复杂数学式用 `common/Formula.tsx`（KaTeX，SIL OFL，字体随 npm 包分发；clip 揭示=板书感）；散数学字符兜底 `'STIX Two Math'`（ai/stem 主题 fontFiles 已登记）。上标一律排版实现（小字号+偏移），**不用 Unicode 上标字符**（思源宋体缺 U+2075 等）。
+
+**渲前字形自检**：`python3 scripts/check_glyphs.py --strict`（扫描 narration.txt + config 字符串 vs 主题字体 cmap，缺字报码点与建议；--strict 缺字退出码 1 可作渲染卡口）。
+
+**新增主题**：① `themes/tokens.json` 加一组 token（palette/fonts/fontFiles/params）；② `common/backdrops/` 加幕底组件（canvas 移植模式见现有四套：rnd 种子确定性、闭式粒子、vignette 壳）；③ `themes/types.ts` 的 ThemeName 与 common/types.ts 同步；④ 本节加一行 + 出标尺 still。
+
+
 | 名 | 值 | 语义 |
 |---|---|---|
 | PURPLE | #6630F8 (102,48,248) | 当前重点 / 激活 / 品牌；胶囊、盒、当前步 |

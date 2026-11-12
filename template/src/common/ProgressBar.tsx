@@ -4,13 +4,16 @@ import {FONT_HEAVY} from './lib';
 import {kf} from './easing';
 import {fitSize} from './textfit';
 import {TOTAL_FRAMES, CHAPTER_STARTS, SENTENCES} from './timeline';
+import {VIDEO} from '../config';
+import {getTheme} from '../themes';
 
 /**
  * 底部章节进度条（半透明条体 y687–720、填充右缘 x=1280·N/TOTAL、n−1 根分隔线、章节名粗黑斜体 24px），来源于一条 MG 科普原片的实测模型（半透明条体 y687–720、填充右缘 x=1280·N/TOTAL、3 根分隔线、4 个章节名粗黑斜体 24px），
  * 章节切换帧来自 timeline.ts（tts_build.py 自动生成），当前章高亮保持到片尾。章名 ≤6 字为宜。
  */
 export const PROGRESS_ALPHA = 0.52;
-export const FILL_RGBA = 'rgba(190,170,250,0.52)';
+/** 已播段填充 rgb 来自主题 token（themes/tokens.json 的 progressFillRgb）；purple-dots 与历史值一致 */
+export const FILL_RGBA = `rgba(${getTheme(VIDEO.theme).palette.progressFillRgb},0.52)`;
 export const TRACK_RGBA = 'rgba(243,243,243,0.32)';
 export const BAR_TOP = 687;
 export const BAR_H = 720 - BAR_TOP;

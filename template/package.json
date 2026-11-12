@@ -9,6 +9,7 @@
   "dependencies": {
     "@remotion/cli": "4.0.507",
     "@remotion/media": "4.0.507",
+    "katex": "^0.19.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "remotion": "4.0.507"

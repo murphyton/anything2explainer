@@ -19,17 +19,58 @@ ap.add_argument('--shots', default='')
 ap.add_argument('--step', type=int, default=4)
 ap.add_argument('--out', default='')
 ap.add_argument('--rail-top', type=int, default=100, help='内容区上界（有流程轨的镜头可传 175）')
-ap.add_argument('--bg', default='auto', help="幕底方案 stars|dots|auto（auto 读 src/config.ts 的 bg）。dots 时按 DotFieldBg 的网格坐标把点阵抠掉再统计，否则波前亮点会被数成背景碎屑")
+ap.add_argument('--bg', default='auto', help="幕底方案 stars|dots|nobel|book|ai|stem|auto（auto 读 src/config.ts 的 bg，'auto' 值再落到主题建议值）。dots 时按 DotFieldBg 的网格坐标把点阵抠掉再统计；新主题幕底（nobel/book/ai/stem）为低幅动效，按 tokens.json 的主色把暗部粒子排除在「碎屑」判据外")
 a = ap.parse_args()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-def cfg_bg():
+BACKDROPS = ['stars', 'dots', 'nobel', 'book', 'ai', 'stem']
+
+def _cfg_str(key, default=''):
     try:
-        m = re.search(r"bg:\s*'(stars|dots)'", open(f'{ROOT}/src/config.ts', encoding='utf-8').read())
-        return m.group(1) if m else 'dots'
+        m = re.search(rf"{key}:\s*'([a-zA-Z-]+)'", open(f'{ROOT}/src/config.ts', encoding='utf-8').read())
+        return m.group(1) if m else default
     except OSError:
-        return 'dots'
-BG = cfg_bg() if a.bg == 'auto' else a.bg
+        return default
+
+THEME = _cfg_str('theme', 'purple-dots')
+
+def _tokens():
+    try:
+        import json
+        return json.load(open(f'{ROOT}/src/themes/tokens.json', encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+
+def cfg_bg():
+    raw = _cfg_str('bg', 'dots')
+    if raw == 'auto':
+        return _tokens().get(THEME, {}).get('suggestedBg', 'dots')
+    return raw if raw in BACKDROPS else 'dots'
+BG = cfg_bg() if a.bg == 'auto' else (a.bg if a.bg in BACKDROPS else cfg_bg())
+
+def accent_rgb():
+    """主题主色 rgb（themes/tokens.json；QC 判色与渲染同源）。"""
+    rgb = _tokens().get(THEME, {}).get('palette', {}).get('accentRgb', '102,45,248')
+    try:
+        return [int(x) for x in str(rgb).split(',')]
+    except ValueError:
+        return [102, 45, 248]
+
+def _hue_of(r, g, b):
+    mx, mn = max(r, g, b), min(r, g, b)
+    d = mx - mn
+    if d == 0:
+        return 0.0
+    if mx == r:
+        h = ((g - b) / d) % 6
+    elif mx == g:
+        h = (b - r) / d + 2
+    else:
+        h = (r - g) / d + 4
+    return h * 60.0
+
+ACCENT_RGB = accent_rgb()
+ACCENT_HUE = _hue_of(*ACCENT_RGB)
 
 def dot_mask(W=1280, H=720, r=5):
     """点阵波幕底的屏幕坐标掩膜（与 src/common/DotFieldBg.tsx 同一组常量：设计坐标 960×540、步距 36、起点 (24,18)、等比放大）。
@@ -49,7 +90,8 @@ def dot_mask(W=1280, H=720, r=5):
 DOT_MASK = dot_mask()
 # 点阵底色 #0b0c11 本身带一点蓝（sat≈.35、lum≈12），会整屏落进「柔光」判据（sat>.25 且 10<lum<110）→ 空场检测被屏蔽、主角区柔光虚高；
 # dots 模式把柔光亮度下限抬到 22（实测底色+噪点 ≤18；紫柔光在内容区的亮度多在 25–110，基本不受影响）。
-SOFT_LO = 22 if BG == 'dots' else 10
+# 新主题幕底（nobel/book/ai/stem）同为暗色底 + 低幅动效，沿用 22；星点雾底保持 10。
+SOFT_LO = 22 if BG != 'stars' else 10
 
 def parse_shots():
     if a.shots:
@@ -104,8 +146,14 @@ def analyze(i):
         if sub.any():
             lab2, n2 = ndi.label(sub)
             glow_hero = int(np.bincount(lab2.ravel())[1:].max()) if n2 else 0
-    # 紫色碎片：实心紫（排除柔光雾与虚线波纹），不膨胀，≥80px 才算一块
-    purple = (b[Z] > r[Z]) & (r[Z] > g[Z]) & (sat[Z] > 0.45) & (lum[Z] > 45)
+    # 主色碎片（原「紫色碎片」，按主题 accent 色相判定，容差 ±30°）：实心主色（排除柔光雾与虚线波纹），不膨胀，≥80px 才算一块。
+    # 幕底为低幅 accent 粒子的新主题（nobel/ai/stem）：粒子 alpha ≤0.3、sat 通常 <0.45，不会落进本判据。
+    mx_ = mx[Z].astype(np.float64); mn_ = mn[Z].astype(np.float64)
+    d_ = np.maximum(mx_ - mn_, 1e-6)
+    r_, g_, b_ = r[Z].astype(np.float64), g[Z].astype(np.float64), b[Z].astype(np.float64)
+    hue = np.where(mx_ == r_, ((g_ - b_) / d_) % 6, np.where(mx_ == g_, (b_ - r_) / d_ + 2, (r_ - g_) / d_ + 4)) * 60.0
+    hue_dist = np.minimum(np.abs(hue - ACCENT_HUE), 360 - np.abs(hue - ACCENT_HUE))
+    purple = (hue_dist < 30) & (sat[Z] > 0.45) & (lum[Z] > 45)
     lab3, n3 = ndi.label(ndi.binary_dilation(purple, structure=np.ones((7, 25), bool)))  # 把一行字的逐字硬投影并成一块
     npurple = int((np.bincount(lab3.ravel())[1:] >= 80).sum()) if n3 else 0
     return hero_h, glow_hero, npurple, small, int(bright.sum()), glow_total
@@ -152,7 +200,7 @@ for sid, lo, hi in shots:
     for f in flags:
         flags_total[f[0]] += 1
     lines.append(f'| {sid} | {lo}–{hi} | {med_h:.0f} / {min_h} | {low_run} | {np.median(gl):.0f} / {np.median(gt):.0f} | {np.median(pp):.0f} | {sbest} | {"；".join(flags) or "OK"} |')
-head = f'# 构图/光/运动量化（{a.frames}，步长 {a.step}，幕底 {BG}）\n\n标记合计：高 {flags_total["高"]} / 中 {flags_total["中"]} / 低 {flags_total["低"]}。判据见 reference/composition-and-light.md §6。\n\n'
+head = f'# 构图/光/运动量化（{a.frames}，步长 {a.step}，幕底 {BG}，主题 {THEME}，主色 rgb={tuple(ACCENT_RGB)}）\n\n标记合计：高 {flags_total["高"]} / 中 {flags_total["中"]} / 低 {flags_total["低"]}。判据见 reference/composition-and-light.md §6。\n\n'
 txt = head + '\n'.join(lines) + '\n'
 if a.out:
     os.makedirs(os.path.dirname(a.out) or '.', exist_ok=True); open(a.out, 'w', encoding='utf-8').write(txt); print(a.out)

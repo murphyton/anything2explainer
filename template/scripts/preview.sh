@@ -16,6 +16,8 @@ resolve_python() {
   return 1
 }
 PY=$(resolve_python) || exit 1
+# 样片也过字形卡口（告警模式，不阻断；正式渲染在 render.sh 里阻断）
+"$ROOT/scripts/check_glyphs.py" || true
 ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
 SEC=${1:-30}; FROM=${2:-0}
 SLUG=$("$PY" -c "import re;print(re.search(r\"slug:\\s*'([^']+)'\", open('src/config.ts', encoding='utf-8').read()).group(1))")

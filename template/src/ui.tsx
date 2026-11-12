@@ -1,36 +1,44 @@
 import React from 'react';
 import {FONT_HEAVY, FONT_TECH, FONT_MONO, FONT_ORB, TEXT_DY, LANG} from './common/lib';
 import {GlitchIn, powOutRemain, BEZ_SCALE_IN, clamp01, rnd} from './common';
+import {VIDEO} from './config';
+import {getTheme} from './themes';
 
 /**
- * 共用图元与调色板（黑填充 + 白描边 2–3px、紫 = 当前重点、橙红 = 指标/警示、灰 = 非重点、绿 = 正确）。镜头组件 `import {…} from '../../ui'`。
+ * 共用图元与调色板（黑填充 + 白描边 2–3px、主色 = 当前重点、橙红 = 指标/警示、灰 = 非重点、绿 = 正确）。镜头组件 `import {…} from '../../ui'`。
  * 所有组件为纯函数式、绝对定位（画布 1280×720）；动画由调用方按 N 计算后传入（opacity/p/s 等）。
+ * 调色板来自激活主题（config.VIDEO.theme → themes/tokens.json）：purple-dots 与历史硬编码值逐字节一致。
  */
-// ---- 调色板 ----
-export const PURPLE = '#6630F8'; // 标准胶囊紫 (102,48,248)
-export const PURPLE_LIGHT = '#A175F1'; // 亮紫（高光端 / 穿过进度条后）
-export const PURPLE_TECH = '#6530F4'; // 英文科技字紫
-export const PURPLE_DEEP = '#5A3AD5'; // 深紫（曲线 / 硬投影）
-export const PURPLE_PALE = '#E6DCFF';
-export const ORANGE = '#F05F41'; // 橙红：指标数字 / 另一方 / 强调
-export const CORAL = '#F16043';
-export const RED_DEEP = '#EC081F'; // 深红警示块
-export const GREEN = '#8FF740'; // 绿勾
-export const GREY = '#A0A0A1'; // 非激活
-export const GREY_MID = '#747474';
-export const GREY_LINE = '#4A4A4A'; // 网格线
-export const GREY_LIGHT = '#D4D4D4';
+// ---- 调色板（主题驱动）----
+const P = getTheme(VIDEO.theme).palette;
+const A = P.accentRgb;
+const AL = P.accentLightRgb;
+export const ACCENT_RGB = A;
+export const ACCENT_LIGHT_RGB = AL;
+export const PURPLE = P.accent; // 主重点色（语义：当前重点）
+export const PURPLE_LIGHT = P.accentLight; // 亮端（高光 / 穿过进度条后）
+export const PURPLE_TECH = P.accentTech; // 英文科技字重点
+export const PURPLE_DEEP = P.accentDeep; // 深重点（曲线 / 硬投影）
+export const PURPLE_PALE = P.accentPale;
+export const ORANGE = P.warn; // 橙红：指标数字 / 另一方 / 强调
+export const CORAL = P.coral;
+export const RED_DEEP = P.danger; // 深红警示块
+export const GREEN = P.success; // 绿勾
+export const GREY = P.grey; // 非激活
+export const GREY_MID = P.greyMid;
+export const GREY_LINE = P.greyLine; // 网格线
+export const GREY_LIGHT = P.greyLight;
 export const WHITE = '#FFFFFF';
 export const MAGENTA = '#D100D6';
 export const CYAN = '#58FFEE';
-export const GLOW_PURPLE = '0 0 12px 3px rgba(102,45,248,.35), 0 0 42px 14px rgba(102,45,248,.45)';
-export const GLOW_PURPLE_S = '0 0 24px 8px rgba(102,45,248,.6)';
+export const GLOW_PURPLE = `0 0 12px 3px rgba(${A},.35), 0 0 42px 14px rgba(${A},.45)`;
+export const GLOW_PURPLE_S = `0 0 24px 8px rgba(${A},.6)`;
 export const GLOW_ORANGE = '0 0 40px rgba(243,95,69,.75), 0 0 100px 10px rgba(243,95,69,.25)';
 export const GLOW_RED = '0 0 60px 20px rgba(236,8,31,.42), 0 0 20px 6px rgba(236,8,31,.45)';
 export const BLOOM = 'drop-shadow(0 0 3px rgba(255,255,255,0.5))';
 export const BLOOM_SOFT = 'drop-shadow(0 0 2px rgba(255,255,255,0.35))';
 export const TEXT_GLOW = '0 0 12px rgba(255,255,255,.55), 0 0 4px rgba(255,255,255,.35)';
-export const PILL_SHADOW = 'drop-shadow(0 0 2px rgba(200,180,255,.6))';
+export const PILL_SHADOW = `drop-shadow(0 0 2px rgba(${AL},.6))`;
 
 // ---- 动效小工具（n = N − f0）----
 export const fadeIn = (n: number, len = 12) => clamp01(n / len);
@@ -71,8 +79,8 @@ export const mixHex = (a: string, b: string, k: number) => {
   return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * t)).join(',')})`;
 };
 /** GLOW_PURPLE 的强度版（k 0→1），配 glowOffK 做"先灭光" */
-export const glowPurple = (k: number) => `0 0 12px 3px rgba(102,45,248,${(0.35 * clamp01(k)).toFixed(3)}), 0 0 42px 14px rgba(102,45,248,${(0.45 * clamp01(k)).toFixed(3)})`;
-export const glowPurpleS = (k: number) => `0 0 24px 8px rgba(102,45,248,${(0.6 * clamp01(k)).toFixed(3)})`;
+export const glowPurple = (k: number) => `0 0 12px 3px rgba(${A},${(0.35 * clamp01(k)).toFixed(3)}), 0 0 42px 14px rgba(${A},${(0.45 * clamp01(k)).toFixed(3)})`;
+export const glowPurpleS = (k: number) => `0 0 24px 8px rgba(${A},${(0.6 * clamp01(k)).toFixed(3)})`;
 
 export const SoftIn: React.FC<{N: number; f0: number; children: React.ReactNode; len?: number; dy?: number; style?: React.CSSProperties}> = ({N, f0, children, len = 8, dy = 10, style}) => {
   const n = N - f0;
@@ -387,7 +395,7 @@ export const Gauge: React.FC<{cx: number; cy: number; r?: number; v: number; col
     <div style={{position: 'absolute', inset: 0, opacity, pointerEvents: 'none'}}>
       <svg width={1280} height={720} viewBox="0 0 1280 720" style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', filter: BLOOM_SOFT}}>
         <path d={arc(a0, a1, r)} fill="none" stroke={GREY_LINE} strokeWidth={sw} strokeLinecap="round" />
-        {vv > 0.005 ? <path d={arc(a0, av, r)} fill="none" stroke={accent} strokeWidth={sw} strokeLinecap="round" style={glow ? {filter: 'drop-shadow(0 0 10px rgba(102,45,248,.85))'} : undefined} /> : null}
+        {vv > 0.005 ? <path d={arc(a0, av, r)} fill="none" stroke={accent} strokeWidth={sw} strokeLinecap="round" style={glow ? {filter: `drop-shadow(0 0 10px rgba(${A},.85))`} : undefined} /> : null}
         {Array.from({length: 9}, (_, i) => {
           const d = a0 + ((a1 - a0) * i) / 8;
           const [tx0, ty0] = toXY(d, r - sw - 4), [tx1, ty1] = toXY(d, r - sw - 14);
@@ -455,7 +463,7 @@ export const PersonIcon: React.FC<{cx: number; cy: number; size?: number; color?
   const hr = s * 0.2;
   return (
     <div style={{...abs(cx - s / 2, cy - s / 2, s, s + (label ? labelSize + 14 : 0)), opacity}}>
-      <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', filter: glow ? 'drop-shadow(0 0 10px rgba(102,45,248,.75))' : BLOOM_SOFT}}>
+      <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', filter: glow ? `drop-shadow(0 0 10px rgba(${A},.75))` : BLOOM_SOFT}}>
         <path d={`M${sw},${s - sw} V${s * 0.8} A${s / 2 - sw},${s * 0.3} 0 0 1 ${s - sw},${s * 0.8} V${s - sw} Z`} fill={accent ?? fill} stroke={color} strokeWidth={sw} strokeLinejoin="round" />
         <circle cx={s / 2} cy={hr + sw + s * 0.06} r={hr} fill={fill} stroke={color} strokeWidth={sw} />
       </svg>

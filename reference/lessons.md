@@ -200,3 +200,13 @@
 - **HUD 换词不能只靠 SoftIn**：单个条目切换时旧词硬切 + 新胶囊从 25% 重来 = 1 帧空白。模板 `Hud` 现在同章换词胶囊常驻、宽度 10 帧过渡、旧词 6 帧淡出、新词 SoftIn；章首（章节卡后）仍走 SoftIn。
 - **组级 motion_check 过了 ≠ 成片过**（见上），所以流程里成片复测必须做；这次 v1→v2 因此多了一轮修复，但 v2 复验 40/40 已修、v3 只剩 4 条低项小修，两轮 QC 收口。
 - 收尾顺序：v2 复验 + 终检并行（3 个 agent）→ 主会话自己做 v3 小修（都是一行改动，不值得再派）→ 渲 v3 → 主会话只对改动帧做数值抽检（HUD 行均值 / 底边行号 / 帧亮度）而不再派 QC。
+
+## 主题系统（第五片 csapp01 期间沉淀）
+- **新增主题必须走 tokens.json 单源**：palette/fontFiles/幕底建议值/入场签名全在 `src/themes/tokens.json`，ui.tsx 与 frame_metrics.py 都读它。QC 判色与渲染色不同源 = 碎片/柔光统计全线失真（第一版把「紫色碎片」写死 b>r>g，切金色主题就全漏）。
+- **判色按色相距离 ±30° 而非通道序**（hue-based accent mask）：b>r>g 只认蓝紫，金（r>g>b）和青（g≈b>r）全漏；换色系主题后用色相环距离判主色， frags 指标才能跨主题复用。
+- **canvas 幕底移植三件套**：①Math.random 全改 rnd 种子（Remotion 多 worker 逐帧渲染，实例内随机=帧间闪烁）；②粒子生命周期改「周期调制」闭式（phase=(t+off)mod L，fadeIn/fadeOut 包络），不能可变步进（worker 间帧序不定）；③noise 纹理模块级 memo 一次。
+- **fonts 按 theme fontFiles 懒加载**：五主题全量字体 >100MB，启动 delayRender 会被拖死；每主题只载自己的字重（Noto Sans SC + Exo2-Italic + Orbitron 三个 base 所有主题都载，因为共用层默认字体引用它们）。
+- **common/types.ts 是 BgSpec 的家**：新增幕底 id 的类型从 themes/types re-export 到 common/types，别让 ThemeBackdrop 直接 import ../themes/types 的同名类型造成双定义。
+- **「不替换、只新增」是硬约束**：主题系统接入时 purple-dots 的 token 值与历史硬编码逐字节一致，tsc 回归 + 旧片 frame_metrics 回归双验证后才算完成。
+- **KaTeX 在 Remotion 直接可用**（npm i katex + import 'katex/dist/katex.min.css'，webpack 打包字体），公式揭示用 clip-path 帧 reveal；上标排版实现不用 Unicode（思源宋体缺 U+2075）。
+- **移植设计稿（HTML/CSS mockup）时，「版式结构」和「皮肤」是两层，都要移植**：第一版只搬了配色/字体/动效（皮肤），漏了布局系统（封面居中↔左对齐 kicker+标题+渐变线+副标；正文右侧数据卡）和可见度标定（HTML 预览 α 值直接照搬，视频压缩后不可辨）。正确顺序：①按设计稿列「结构清单」（几个版式模式、每个模式的元素与锚点）；②canvas→canvas 参数照搬后**必须渲 still 与设计稿并排比对**再交付；③α/亮度类参数以「成片压缩后可辨」为准重新标定，不能信源文件。

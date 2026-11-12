@@ -1,6 +1,6 @@
 # 字体许可
 
-本目录随附的四款字体均以 **SIL Open Font License, Version 1.1** 分发，许可全文见本文件末尾。
+本目录随附的字体均以 **SIL Open Font License, Version 1.1** 分发，许可全文见本文件末尾。
 各字体的版权与保留字体名（取自字体自身的 name 表）：
 
 | 文件 | 字体 | 版权声明 |
@@ -9,6 +9,11 @@
 | `Orbitron[wght].ttf` | Orbitron | Copyright 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron), with Reserved Font Name: "Orbitron". |
 | `Exo2-Italic.ttf` | Exo 2 | Copyright 2013 The Exo 2 Project Authors (https://github.com/googlefonts/Exo-2.0) |
 | `Audiowide-Regular.ttf` | Audiowide | Copyright (c) 2012 by Brian J. Bonislawsky DBA Astigmatic (AOETI) (astigma@astigmatic.com), with Reserved Font Name "Audiowide" |
+| `SourceHanSerifCN-*.otf`（4 档字重） | Source Han Serif CN（思源宋体） | Copyright © 2017 Adobe Systems Incorporated (http://www.adobe.com/), with Reserved Font Name 'Source'. |
+| `LXGWWenKai-*.ttf`（2 档字重） | LXGW WenKai（霞鹜文楷） | Copyright 2021-2026 LXGW (https://github.com/lxgw/LxgwWenKai)；基于 Copyright 2020 The Klee Project Authors (https://github.com/fontworks-fonts/Klee) |
+| `Exo2-*.otf`（静态字重家族） | Exo 2 | Copyright © 2013, Natanael Gama (www.ndiscovered.com), with Reserved Font Name Exo |
+| `JetBrainsMono-*.ttf` | JetBrains Mono | © 2000-2020 JetBrains s.r.o. (https://github.com/JetBrains/JetBrainsMono) |
+| `STIXTwoMath-Regular.otf` | STIX Two Math | Copyright (c) 2001-2016 by the STI Pub Companies；Portions copyright (c) 1998-2003 MicroPress, Inc.；(https://github.com/stipub/stixfonts) |
 
 要点（OFL 1.1）：可自由使用、嵌入、修改、随软件一起再分发（含商用），但 ①字体本身不得单独售卖；②再分发时必须附带上面的版权声明与本许可；③修改版不得使用保留字体名。渲染出的视频成品不受限制。
 

@@ -7,16 +7,24 @@ export type RailSpec = {steps: string[]; switchS: string[]; fromS: string; toS: 
 export const VIDEO = {
   slug: 'demo', // 素材目录 public/assets/<slug>/（配音 audio.wav 由 tts_build.py 写到这里）
   /**
+   * 主题（视觉体系预设）：'purple-dots'（默认，与历史版本逐字节一致）｜'nobel'（深蓝夜空×奖章金，诺奖/科学家）｜
+   * 'book'（暖棕黑×琥珀，拆书/读书）｜'ai'（冷黑蓝×电青，AI/前沿科技）｜'stem'（墨绿黑板×粉笔黄，数理化教学）。
+   * 决定调色板、标题/正文字体、片头入场签名与配套幕底建议值；QC 工具（frame_metrics/motion_check/selfcheck）
+   * 读 src/themes/tokens.json 同源判色。镜头代码零改动——图元接口与语义（主色=重点、灰=未激活）不变。
+   */
+  theme: 'purple-dots' as import('./themes/types').ThemeName,
+  /**
    * 片子语言：'zh' 中文（默认）｜'en' 英文。
    * 影响 → 配音引擎（tts_build.py 的 TTS_ENGINE=auto 也会自己按解说词判语言）、标题/章节卡是否压窄（拉丁不压）、
    * 居中文字的基线补偿（CJK −2 / 拉丁 0）、文案与字幕块长度预算（见 reference/narration-storyboard.md §5）。
    */
   lang: 'zh' as 'zh' | 'en',
   /**
-   * 幕底：'dots' 点阵波（默认，`common/DotFieldBg.tsx`，video-talkcraft dot-field-wave 移植）｜'stars' 星点 + 雾底渐变（早期样片风格）。
-   * 两者互斥；镜头里的 BG_Gn 覆写（`stars:'none'` 关幕底）对两种方案都生效。frame_metrics.py 会按这里的值抠掉幕底再统计。
+   * 幕底：'dots' 点阵波（默认）｜'stars' 星点+雾底（早期样片风格）｜'nobel' 金尘夜空｜'book' 纸纹光斑｜
+   * 'ai' 粒子流+CRT 扫描线｜'stem' 板书网格+粉笔尘。不设或设 'auto' 时用主题建议值（themes/tokens.json 的 suggestedBg）。
+   * 镜头里的 BG_Gn 覆写（`stars:'none'` 关幕底）对所有幕底生效。frame_metrics.py 按同源 token 抠幕底再统计。
    */
-  bg: 'dots' as 'stars' | 'dots',
+  bg: 'auto' as import('./themes/types').BackdropId | 'auto',
   /**
    * 片头。中文片：big 用 Audiowide 宽体（缩写/英文词），rest 用 Noto 900（中文部分），en 是英文全称，tagline 一句话钩子。
    * 英文片：rest 留空 ''（不显示），big 放主词/缩写，en 放全称或副标，tagline 一句话钩子。

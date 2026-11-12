@@ -19,6 +19,8 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
 V=${VER:-v1}
 SLUG=$("$PY" -c "import re;print(re.search(r\"slug:\\s*'([^']+)'\", open('src/config.ts', encoding='utf-8').read()).group(1))")
 mkdir -p renders
+# 渲前字形卡口（主题系统）：文案逐字符对照主题字体 cmap，缺字默认阻断渲染（GLYPH_STRICT=0 降级为告警）
+"$ROOT/scripts/check_glyphs.py" --strict || { [ "${GLYPH_STRICT:-1}" = 1 ] && { echo "check_glyphs: 缺字未解决，终止渲染（GLYPH_STRICT=0 可降级为告警）"; exit 1; } || echo "check_glyphs: 有缺字（告警模式，继续渲染）"; }
 [ "${SKIP_BUNDLE:-0}" = 1 ] && [ -d build_full ] || { rm -rf build_full && npx remotion bundle src/index.ts --out-dir build_full --log=error; }
 npx remotion render build_full Video "renders/${SLUG}_${V}.mp4" --codec=h264 --crf=16 --concurrency=${CONC:-6} --timeout=${RTIMEOUT:-300000} --log=error
 [ -s "renders/${SLUG}_${V}.mp4" ] || { echo "RENDER FAILED"; exit 1; }

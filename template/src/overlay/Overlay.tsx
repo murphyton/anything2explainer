@@ -1,9 +1,39 @@
 import React from 'react';
 import {useCurrentFrame} from 'remotion';
-import {GlitchIn, kf, emphasisPulse, easeInOutPow, SENTENCES, TOTAL_FRAMES, CHAPTER_STARTS, FONT_HEAVY, FONT_WIDE, FONT_ORB, clamp01, SQUEEZE, fitSize, EM_WIDE} from '../common';
-import {CText, TechText, TechSub, Pill, TopCapsule, ArrowH, PURPLE, PURPLE_TECH, GREY, GREY_MID, WHITE, GLOW_PURPLE_S, PILL_SHADOW, fadeIn, slideUp} from '../ui';
+import {GlitchIn, kf, emphasisPulse, easeInOutPow, SENTENCES, TOTAL_FRAMES, CHAPTER_STARTS, FONT_HEAVY, FONT_WIDE, FONT_ORB, FONT_TECH, clamp01, SQUEEZE, fitSize, EM_WIDE} from '../common';
+import {CText, TechText, TechSub, Pill, TopCapsule, ArrowH, PURPLE, PURPLE_TECH, GREY, GREY_MID, WHITE, GLOW_PURPLE_S, PILL_SHADOW, ACCENT_RGB, fadeIn, slideUp} from '../ui';
 import {VIDEO} from '../config';
+import {getTheme} from '../themes';
 const clampFrames = (n: number, len: number) => clamp01(n / len);
+const THEME = getTheme(VIDEO.theme);
+
+// ---------- 主题入场签名（帧驱动；purple-dots/ai=glitch，nobel=ink，book=page，stem=chalk） ----------
+/** ink：墨点显影——淡入 + 1.5% 缩放收拢（无 blur，避免大半径 filter） */
+const inkIn = (n: number) => {
+  const k = clamp01(n / 28);
+  return {opacity: k, transform: `scale(${(1.015 - 0.015 * k).toFixed(4)})`, transformOrigin: '50% 50%'};
+};
+/** page：翻页——透视 rotateX 62°→0 自底部起翻 */
+const pageIn = (n: number) => {
+  const k = clamp01(n / 24);
+  const e = 1 - Math.pow(1 - k, 2.5);
+  return {opacity: clamp01(n / 10), transform: `perspective(1100px) rotateX(${((1 - e) * 62).toFixed(2)}deg) translateY(${((1 - e) * 22).toFixed(1)}px)`, transformOrigin: '50% 110%'};
+};
+/** chalk：板书——clip-path 从左向右写出 */
+const chalkIn = (n: number) => ({clipPath: `inset(0 ${((1 - clamp01(n / 40)) * 100).toFixed(2)}% 0 0)`, opacity: n < 0 ? 0 : 1});
+const ThemeEntrance: React.FC<{N: number; f0: number; seed?: number; children: React.ReactNode}> = ({N, f0, seed, children}) => {
+  const n = N - f0;
+  switch (THEME.params.entrance) {
+    case 'ink':
+      return <div style={{...inkIn(n), position: 'absolute', inset: 0}}>{children}</div>;
+    case 'page':
+      return <div style={{...pageIn(n), position: 'absolute', inset: 0}}>{children}</div>;
+    case 'chalk':
+      return <div style={{...chalkIn(n), position: 'absolute', inset: 0}}>{children}</div>;
+    default:
+      return <GlitchIn N={N} f0={f0} rgbSplit={6} slices={14} seed={seed ?? 3}>{children}</GlitchIn>;
+  }
+};
 
 // ---------- 时间轴查询 ----------
 export const S = (id: string) => {
@@ -22,6 +52,21 @@ const exitOut = (n: number) => {
 // ---------- 片头 ----------
 // 配音未生成时（timeline.ts 占位、SENTENCES 为空）用兜底值，让探针 still 能渲染
 export const TITLE_RANGE: [number, number] = [1, (SENTENCES[0]?.from ?? 100) - 9];
+const IS_DEFAULT_THEME = VIDEO.theme === 'purple-dots';
+/** 非默认主题的封面：newtemplates.html 封面模式——左对齐 kicker（宽体缩写，字距拉开）+ 大标题（主题字体）+ 渐变分割线 + 副标。默认主题保持历史版式。 */
+const CoverNew: React.FC<{N: number; a: number; glow: number}> = ({N, a, glow}) => {
+  const n = N - (a + 11);
+  const ruleW = kf(n, [[0, 0], [22, 280]], easeInOutPow(2.5));
+  return (
+    <ThemeEntrance N={N} f0={a + 11} seed={3}>
+      <div style={{position: 'absolute', left: 110, top: 228, fontFamily: THEME.fonts.kicker, fontSize: 22, fontWeight: 700, letterSpacing: 8, color: PURPLE, textShadow: `0 0 12px rgba(${ACCENT_RGB},.5)`}}>{VIDEO.title.big}</div>
+      <div style={{position: 'absolute', left: 108, top: 268, fontFamily: THEME.fonts.title, fontWeight: THEME.fonts.titleWeight, fontSize: fitSize(VIDEO.title.rest || VIDEO.title.big, 980, 92, 58, 1, 3), color: WHITE, lineHeight: 1.15, letterSpacing: 3, textShadow: `0 0 ${16 + 12 * glow}px rgba(${ACCENT_RGB},${0.4 + 0.25 * glow})`, whiteSpace: 'nowrap'}}>{VIDEO.title.rest || VIDEO.title.big}</div>
+      <div style={{position: 'absolute', left: 112, top: 415, width: ruleW, height: 3, background: `linear-gradient(90deg, ${PURPLE}, rgba(${ACCENT_RGB},0))`}} />
+      <div style={{position: 'absolute', left: 112, top: 440, fontFamily: THEME.fonts.body, fontSize: 26, fontWeight: 300, color: GREY, letterSpacing: 5}}>{VIDEO.title.tagline}</div>
+      {VIDEO.title.en ? <div style={{position: 'absolute', left: 112, top: 496, fontFamily: FONT_TECH, fontStyle: 'italic', fontSize: 22, fontWeight: 700, color: GREY_MID, letterSpacing: 1}}>{VIDEO.title.en}</div> : null}
+    </ThemeEntrance>
+  );
+};
 export const Title: React.FC = () => {
   const N = useCurrentFrame() + TITLE_RANGE[0];
   const [a, b] = TITLE_RANGE;
@@ -29,16 +74,23 @@ export const Title: React.FC = () => {
   const dy = -exitOut(exitN).dy;
   const op = exitOut(exitN).op;
   const glow = 0.5 + 0.5 * Math.sin((N / 30) * Math.PI); // 缓慢呼吸
+  if (!IS_DEFAULT_THEME) {
+    return (
+      <div style={{position: 'absolute', inset: 0, transform: `translateY(${dy}px)`, opacity: op}}>
+        <CoverNew N={N} a={a} glow={glow} />
+      </div>
+    );
+  }
   return (
     <div style={{position: 'absolute', inset: 0, transform: `translateY(${dy}px)`, opacity: op}}>
-      <GlitchIn N={N} f0={a + 11} rgbSplit={6} slices={14} seed={3}>
+      <ThemeEntrance N={N} f0={a + 11} seed={3}>
         <div style={{position: 'absolute', left: 0, top: 268, width: 1280, display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 26}}>
-          <span style={{fontFamily: FONT_WIDE, fontSize: fitSize(VIDEO.title.big, VIDEO.title.rest ? 620 : 1120, 118, 64, EM_WIDE, 6), color: WHITE, lineHeight: 1, letterSpacing: 6, textShadow: `0 0 ${18 + 14 * glow}px rgba(102,45,248,${0.55 + 0.3 * glow}), 6px 6px 0 ${PURPLE}`}}>{VIDEO.title.big}</span>
+          <span style={{fontFamily: THEME.fonts.title, fontWeight: THEME.fonts.titleWeight, fontSize: fitSize(VIDEO.title.big, VIDEO.title.rest ? 620 : 1120, 118, 64, EM_WIDE, 6), color: WHITE, lineHeight: 1, letterSpacing: 6, textShadow: `0 0 ${18 + 14 * glow}px rgba(${ACCENT_RGB},${0.55 + 0.3 * glow}), 6px 6px 0 ${PURPLE}`}}>{VIDEO.title.big}</span>
           {VIDEO.title.rest ? (
-            <span style={{fontFamily: FONT_HEAVY, fontWeight: 900, fontSize: fitSize(VIDEO.title.rest, 520, 96, 60, 1, 2), color: WHITE, lineHeight: 1, transform: `scaleX(${SQUEEZE})`, transformOrigin: '0 100%', letterSpacing: 2, WebkitTextStroke: '1px #000', paintOrder: 'stroke fill'}}>{VIDEO.title.rest}</span>
+            <span style={{fontFamily: THEME.fonts.titleRest, fontWeight: 900, fontSize: fitSize(VIDEO.title.rest, 520, 96, 60, 1, 2), color: WHITE, lineHeight: 1, transform: `scaleX(${SQUEEZE})`, transformOrigin: '0 100%', letterSpacing: 2, WebkitTextStroke: '1px #000', paintOrder: 'stroke fill'}}>{VIDEO.title.rest}</span>
           ) : null}
         </div>
-      </GlitchIn>
+      </ThemeEntrance>
       <div style={{position: 'absolute', inset: 0, opacity: fadeIn(N - (a + 20), 10), transform: `translateY(${slideUp(N - (a + 20), 60, 18)}px)`}}>
         <TechText cx={640} cy={446} text={VIDEO.title.en} fontSize={38} scaleX={0.82} weight={700} />
       </div>
@@ -68,14 +120,32 @@ export const ChapterCard: React.FC<{card: (typeof CHAPTER_CARDS)[number]}> = ({c
   const dy = -exitOut(exitN).dy;
   const op = exitOut(exitN).op;
   const w = kf(n, [[0, 0], [20, 300]], easeInOutPow(2.5));
+  if (!IS_DEFAULT_THEME) {
+    // 非默认主题：newtemplates.html 正文模式——左上 kicker + 标题 + 细渐变线 + 英文副标，右侧竖线数据卡（大章号）
+    const ruleW = kf(n, [[0, 0], [18, 150]], easeInOutPow(2.5));
+    return (
+      <div style={{position: 'absolute', inset: 0, transform: `translateY(${dy}px)`, opacity: op}}>
+        <ThemeEntrance N={N} f0={card.from + 3} seed={card.n}>
+          <div style={{position: 'absolute', left: 96, top: 212, fontFamily: THEME.fonts.kicker, fontSize: 18, fontWeight: 700, letterSpacing: 10, color: PURPLE, textShadow: `0 0 10px rgba(${ACCENT_RGB},.5)`}}>{`CHAPTER 0${card.n}`}</div>
+          <div style={{position: 'absolute', left: 94, top: 250, fontFamily: THEME.fonts.title, fontWeight: THEME.fonts.titleWeight, fontSize: fitSize(card.title, 780, 62, 40, 1, 3), color: WHITE, lineHeight: 1.2, letterSpacing: 3, textShadow: `0 0 14px rgba(${ACCENT_RGB},.35)`, whiteSpace: 'nowrap'}}>{card.title}</div>
+          <div style={{position: 'absolute', left: 98, top: 342, width: ruleW, height: 2, background: `linear-gradient(90deg, ${PURPLE}, rgba(${ACCENT_RGB},0))`}} />
+          {card.tech ? <div style={{position: 'absolute', left: 98, top: 366, fontFamily: THEME.fonts.body, fontSize: 22, fontWeight: 300, color: GREY, letterSpacing: 4}}>{card.tech}</div> : null}
+          <div style={{position: 'absolute', left: 990, top: 226, width: 220, borderLeft: `1px solid rgba(${ACCENT_RGB},.32)`, paddingLeft: 24}}>
+            <div style={{fontFamily: FONT_ORB, fontSize: 64, fontWeight: 700, color: PURPLE, lineHeight: 1, textShadow: `0 0 18px rgba(${ACCENT_RGB},.55)`}}>{`0${card.n}`}</div>
+            <div style={{fontFamily: FONT_TECH, fontStyle: 'italic', fontSize: 14, color: GREY_MID, letterSpacing: 4, marginTop: 10}}>{card.tech || 'CHAPTER'}</div>
+          </div>
+        </ThemeEntrance>
+      </div>
+    );
+  }
   return (
     <div style={{position: 'absolute', inset: 0, transform: `translateY(${dy}px)`, opacity: op}}>
       <div style={{position: 'absolute', opacity: fadeIn(n, 8)}}>
-        <CText cx={640} cy={268} size={54} weight={700} family={FONT_ORB} color={PURPLE_TECH} letterSpacing={4} shadow="0 0 14px rgba(102,45,248,.6)">{`0${card.n}`}</CText>
+        <CText cx={640} cy={268} size={54} weight={700} family={FONT_ORB} color={PURPLE_TECH} letterSpacing={4} shadow={`0 0 14px rgba(${ACCENT_RGB},.6)`}>{`0${card.n}`}</CText>
       </div>
-      <GlitchIn N={N} f0={card.from + 3} rgbSplit={5} seed={card.n}>
-        <CText cx={640} cy={372} size={fitSize(card.title, 1100, 80, 46, 1, 3)} weight={900} scaleX={SQUEEZE} letterSpacing={3} style={{WebkitTextStroke: '1px #000', paintOrder: 'stroke fill'}}>{card.title}</CText>
-      </GlitchIn>
+      <ThemeEntrance N={N} f0={card.from + 3} seed={card.n}>
+        <CText cx={640} cy={372} size={fitSize(card.title, 1100, 80, 46, 1, 3)} weight={900} family={THEME.fonts.title} scaleX={SQUEEZE} letterSpacing={3} style={{WebkitTextStroke: '1px #000', paintOrder: 'stroke fill'}}>{card.title}</CText>
+      </ThemeEntrance>
       <div style={{position: 'absolute', left: 640 - w / 2, top: 428, width: w, height: 3, background: WHITE, opacity: 0.85}} />
       {card.tech ? (
         <div style={{position: 'absolute', opacity: fadeIn(n - 10, 10)}}>
@@ -193,7 +263,7 @@ export const EndCredit: React.FC = () => {
       {c ? (
         <>
           <CText cx={640} cy={300} size={26} weight={500} color={GREY} letterSpacing={4}>{c.kicker}</CText>
-          <CText cx={640} cy={352} size={40} weight={700} color={WHITE}>{c.title}</CText>
+          <CText cx={640} cy={352} size={40} weight={700} family={THEME.fonts.titleRest} color={WHITE}>{c.title}</CText>
           <CText cx={640} cy={404} size={26} weight={500} color={GREY}>{c.byline}</CText>
           <div style={{position: 'absolute', left: 560, top: 440, width: 160, height: 2, background: 'rgba(255,255,255,0.35)', transform: `scaleX(${fadeIn(n - 6, 16)})`}} />
           <CText cx={640} cy={476} size={22} weight={500} color={GREY}>{c.note}</CText>

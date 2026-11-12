@@ -1,6 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Sequence, staticFile} from 'remotion';
-import {Fonts, BgTrack, DotFieldBg, FootageTrack, ProgressBar, Subtitles} from './common';
+import {Fonts, ThemeBackdrop, FootageTrack, ProgressBar, Subtitles} from './common';
 import type {ShotDef, BgSpec, FootageSpec} from './common';
 import {VIDEO} from './config';
 import {SHOTS_OVERLAY, SHOTS_OVERLAY_TOP, BG_OVERLAY} from './overlay';
@@ -20,7 +20,7 @@ export const Stage: React.FC<{shots: ShotDef[]; bg: BgSpec[]; footage?: FootageS
   <AbsoluteFill style={{background: '#000'}}>
     <Fonts />
     {audio ? <Audio src={staticFile(`assets/${VIDEO.slug}/audio.wav`)} /> : null}
-    {VIDEO.bg === 'dots' ? <DotFieldBg specs={bg} /> : <BgTrack specs={bg} />}
+    {<ThemeBackdrop id={VIDEO.bg} specs={bg} />}
     <FootageTrack specs={footage} />
     {shots.filter((s) => s.layer !== 'aboveBar').map((s) => (
       <Sequence key={s.id} from={s.from - 1} durationInFrames={s.to - s.from + 1}>

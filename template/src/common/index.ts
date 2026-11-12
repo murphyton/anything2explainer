@@ -6,6 +6,8 @@ export * from './Glitch';
 export * from './StarField';
 export * from './Fog';
 export * from './DotFieldBg';
+export * from './ThemeBackdrop';
+export * from './Formula';
 export type {ShotDef, BgSpec} from './types';
 export * from './ProgressBar';
 export {SubtitleLine, SUB_STYLE, strokeShadow, Subtitles} from './Subtitle';
